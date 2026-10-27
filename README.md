@@ -62,3 +62,9 @@ A GitHub push alone deploys only after the repository has been linked to a Verce
 ## Frontend connection
 
 CORS allows `https://flora-connect-frontend.vercel.app`, `http://localhost:5173`, and `http://127.0.0.1:5173` by default. Override this allowlist using the server environment variable `FRONTEND_ORIGINS` with comma-separated exact origins (no trailing slashes). The override replaces the defaults; include every origin you want to allow. Restart or redeploy after changing it. Preview URLs must be added explicitly. CORS grants browser read access and does not replace authentication.
+
+## License
+
+Copyright (c) 2026 TourGo organization. All rights reserved.
+
+No use, copying, modification, distribution, or sublicensing is permitted without prior written permission from TourGo organization. See [LICENSE](LICENSE).
