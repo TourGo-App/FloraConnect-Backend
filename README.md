@@ -39,9 +39,9 @@ Vitest and Supertest check the health response, the serverless entry point, and 
 
 - `src/app.ts`: shared Express application, exported without opening a port.
 - `src/server.ts`: local/standalone listener.
-- `src/routes/index.ts`: API routes, mounted at `/api`.
+- `src/routes/index.ts`: module route composition mounted at `/api`; health behavior lives under `src/modules/health/`.
 - Vercel uses `src/app.ts` directly through the Express preset. Keep standalone Vercel Functions out of `api/` to avoid shadowing the Express `/api` routes.
-- `tests/health.test.ts`: HTTP contract tests.
+- `tests/integration/health.test.ts`: HTTP contract tests.
 - `src/config/`, `src/middleware/`, `src/modules/`: placeholders for future features.
 - `prisma/`: reserved for the next milestone. No database schema or client is configured yet.
 
@@ -68,3 +68,7 @@ CORS allows `https://flora-connect-frontend.vercel.app`, `http://localhost:5173`
 Copyright (c) 2026 TourGo organization. All rights reserved.
 
 No use, copying, modification, distribution, or sublicensing is permitted without prior written permission from TourGo organization. See [LICENSE](LICENSE).
+
+## Code organization
+
+See [folder structure and conventions](docs/architecture/README.md). Configuration, shared middleware and feature modules have separate responsibilities. API integration tests live in `tests/integration/`.

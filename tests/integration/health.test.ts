@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import request from 'supertest';
-import app from '../src/app.js';
+import app from '../../src/app.js';
 
 describe('FloraConnect API', () => {
   it.each(['https://flora-connect-frontend.vercel.app', 'http://localhost:5173', 'http://127.0.0.1:5173'])('allows browser requests from %s', async (origin) => {
