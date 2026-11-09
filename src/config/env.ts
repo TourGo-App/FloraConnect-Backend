@@ -6,6 +6,10 @@ export function getPort(): number {
   return port;
 }
 
+export function getMongoUri(): string {
+  return process.env.MONGODB_URI ?? 'mongodb://localhost:27017/floraconnect';
+}
+
 export const allowedOrigins = (process.env.FRONTEND_ORIGINS ??
   'https://flora-connect-frontend.vercel.app,http://localhost:5173,http://127.0.0.1:5173')
   .split(',').map(origin => origin.trim()).filter(Boolean);
