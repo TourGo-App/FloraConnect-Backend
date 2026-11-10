@@ -1,0 +1,24 @@
+name: Validate action-plan automation
+
+on:
+  pull_request:
+    paths:
+      - ".github/scripts/**"
+      - ".github/plan-review-config.json"
+      - ".github/ACTION_PLAN_TEMPLATE.md"
+      - ".github/workflows/plan-review-checks.yml"
+      - ".github/workflows/issue-plan-review.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify-plan-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Test validation and automated comment behavior
+        run: node --test .github/scripts/issue-plan-checks.mjs
