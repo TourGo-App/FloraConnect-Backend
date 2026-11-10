@@ -213,7 +213,7 @@ function fixture(overrides = {}) {
   };
   return { event, calls, state, api };
 }
-test("ignores ordinary comments, bots, PRs, and non-collaborators", async () => {
+test("ignores ordinary comments, bots, and PRs", async () => {
   for (const mutate of [
     (e) => {
       e.comment.body = "hello";
@@ -224,9 +224,6 @@ test("ignores ordinary comments, bots, PRs, and non-collaborators", async () => 
     (e) => {
       e.issue = { ...issue, pull_request: {} };
     },
-    (e) => {
-      e.comment.author_association = "NONE";
-    },
   ]) {
     const f = fixture();
     mutate(f.event);
@@ -234,6 +231,18 @@ test("ignores ordinary comments, bots, PRs, and non-collaborators", async () => 
     assert.equal(f.calls.length, 0);
   }
 });
+test("reviews explicit requests from read-only and first-time contributors", async () => {
+  for (const association of ["NONE", "FIRST_TIMER", "FIRST_TIME_CONTRIBUTOR", "CONTRIBUTOR"]) {
+    const f = fixture();
+    f.event.comment.author_association = association;
+    await reviewComment({ ...f, config });
+    const posted = f.calls.find((call) => call.options?.method === "POST");
+    assert.ok(posted, `Expected a reply for ${association}`);
+    assert.match(posted.options.body.body, /Pending @Kunchana-Wijesinghe Final Approval/);
+    assert.match(posted.options.body.body, /not permission to begin work/);
+  }
+});
+
 test("posts a single reply and updates only its own bot reply after an edit", async () => {
   const f = fixture();
   await reviewComment({ ...f, config });
