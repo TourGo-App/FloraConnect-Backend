@@ -14,12 +14,6 @@ export async function reviewComment({ event, config, api }) {
     event.comment?.user?.type === "Bot"
   )
     return;
-  if (
-    !["OWNER", "MEMBER", "COLLABORATOR"].includes(
-      event.comment?.author_association,
-    )
-  )
-    return;
   const wasRequest = isPlanRequest(event.changes?.body?.from);
   if (!isPlanRequest(event.comment?.body) && !wasRequest) return;
   if (!/^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/i.test(config.reviewer))

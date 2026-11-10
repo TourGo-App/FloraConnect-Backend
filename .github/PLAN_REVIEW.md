@@ -1,12 +1,12 @@
 # Contributor action-plan review
 
-This repository has a GitHub Actions workflow that replies when a collaborator posts or edits an issue comment starting with `/request-plan` on its own first line. Copy the structure from [ACTION_PLAN_TEMPLATE.md](ACTION_PLAN_TEMPLATE.md). This workflow is rules-based, not AI; it requires no API keys, paid model service, PAT, custom secret, or new npm dependency.
+This repository has a GitHub Actions workflow that replies when a contributor posts or edits an issue comment starting with `/request-plan` on its own first line. Copy the structure from [ACTION_PLAN_TEMPLATE.md](ACTION_PLAN_TEMPLATE.md). This workflow is rules-based, not AI; it requires no API keys, paid model service, PAT, custom secret, or new npm dependency.
 
 ## Enable
 
 Commit the `.github` automation files to the repository's default branch. GitHub Actions must be enabled, and organization policy must permit this workflow to use `contents: read` and `issues: write`. GitHub supplies `GITHUB_TOKEN` automatically. Workflow files on another branch do not activate the issue-comment trigger. Standard Actions runner quotas and billing still apply, especially for private repositories.
 
-The reviewer is configured as `Kunchana-Wijesinghe` in `plan-review-config.json`. Each repository has its own validation commands there. Only repository collaborators, organization members and owners can trigger replies; unrelated comments, bots, closed issues and pull-request comments are ignored.
+The reviewer is configured as `Kunchana-Wijesinghe` in `plan-review-config.json`. Each repository has its own validation commands there. Any human contributor who can comment on an issue can request a review, including read-only and first-time contributors. GitHub author association does not grant or block a checklist review. Unrelated comments, bots, closed issues and pull-request comments are ignored.
 
 ## What it checks
 
