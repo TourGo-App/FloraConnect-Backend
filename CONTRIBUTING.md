@@ -47,9 +47,34 @@ Thank you for contributing to FloraConnect! This guide establishes standard work
 Always branch out from the latest `main`:
 ```bash
 git checkout main
-git pull origin main
+git pull --ff-only origin main
 git checkout -b <branch-type>/BE-<issue-number>-<short-description>
 ```
+
+### Push your branch and open a pull request
+
+Keep `main` synchronized with GitHub and commit work on a separate branch. Push that branch instead of pushing directly to `main`:
+
+```bash
+git push -u origin HEAD
+```
+
+Open a pull request targeting `main` and wait for maintainer approval before merging.
+
+### Recovering from a non-fast-forward rejection
+
+The remote branch contains commits missing from your local history. `git pull` is two words; `gitpull` is not a command. Inspect first:
+
+```bash
+git fetch origin
+git status
+git log --oneline --graph --decorate -12
+git rev-list --left-right --count origin/main...main
+```
+
+If local `main` is only behind and your working tree is clean, run `git switch main` then `git pull --ff-only origin main`. If local commits exist, preserve them on a separate branch and submit intended changes through a PR. Commit or stash unfinished work before switching branches. Never force-push shared `main`.
+
+`Merge made by the 'ort' strategy` means the pull succeeded and created a merge commit. Compare `git diff origin/main main`: changes already merged remotely do not need a duplicate PR. Preserve a backup branch before removing redundant local history.
 
 **Branch Prefixes:**
 * `feat/` — New feature or API endpoint (e.g., `feat/BE-04-user-registration`)
