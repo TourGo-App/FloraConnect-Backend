@@ -32,3 +32,5 @@ This is an initial admin dashboard, not implementation of all future modules in 
 ## Verification
 
 Run npm run typecheck, npm test and npm run build. Auth tests mock storage and never modify shared Atlas records. Real browser smoke checks use only the explicitly requested seed account; they do not change its temporary password. Verify an actual email provider and multi-account business/organization review flow in staging before production use.
+
+Bootstrap creates the initial account and its audit event in one MongoDB transaction. The backend validation workflow runs typechecks, mocked-storage authentication tests and the production build on PRs without Atlas credentials. This is a follow-up to authentication commit 08fb1fe, which was already on main before this PR.
