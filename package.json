@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "migrate:public-ids": "node --env-file-if-exists=.env --import tsx src/scripts/backfill-public-ids.ts",
     "seed:super-admin": "node --env-file-if-exists=.env --import tsx src/scripts/seed-super-admin.ts"
   },
   "dependencies": {

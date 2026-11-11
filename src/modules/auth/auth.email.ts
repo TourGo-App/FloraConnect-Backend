@@ -1,6 +1,6 @@
-﻿import { randomBytes } from 'node:crypto';
-import { User } from './auth.models.js';
-import { digest, HttpError } from './auth.security.js';
+﻿import { randomBytes } from "node:crypto";
+import { User } from "./auth.models.js";
+import { digest, HttpError } from "./auth.security.js";
 
 // The webhook is a private mail-delivery adapter, configured by the operator.
 // No token or message body is logged or returned through public registration APIs.
@@ -12,12 +12,29 @@ export async function sendVerification(
   const key = process.env.VERIFICATION_EMAIL_WEBHOOK_TOKEN;
   if (!endpoint || !key) return false;
   const target = new URL(endpoint);
-  if (target.protocol !== 'https:')
-    throw new HttpError(503, 'Verification email delivery is unavailable.');
-  const frontend = new URL(
-    process.env.FRONTEND_URL ?? 'https://flora-connect-frontend.vercel.app',
-  );
-  const token = randomBytes(32).toString('hex');
+  if (target.protocol !== "https:")
+    throw new HttpError(503, "Verification email delivery is unavailable.");
+  const frontendUrl = process.env.FRONTEND_URL?.trim();
+  if (!frontendUrl)
+    throw new HttpError(503, "Verification email delivery is unavailable.");
+  const frontend = new URL(frontendUrl);
+  const production =
+    process.env.NODE_ENV === "production" || Boolean(process.env.VERCEL);
+  if (
+    frontend.username ||
+    frontend.password ||
+    frontend.search ||
+    frontend.hash ||
+    frontend.pathname !== "/" ||
+    (frontend.protocol !== "https:" &&
+      !(
+        frontend.protocol === "http:" &&
+        !production &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(frontend.hostname)
+      ))
+  )
+    throw new HttpError(503, "Verification email delivery is unavailable.");
+  const token = randomBytes(32).toString("hex");
   await User.updateOne(
     { _id: userId, emailVerified: false },
     {
@@ -25,23 +42,23 @@ export async function sendVerification(
       verificationExpiresAt: new Date(Date.now() + 86400000),
     },
   );
-  const link = new URL('/verify-email', frontend);
+  const link = new URL("/verify-email", frontend);
   link.hash = `token=${token}`;
   const response = await fetch(target, {
-    method: 'POST',
+    method: "POST",
     headers: {
       Authorization: `Bearer ${key}`,
-      'Content-Type': 'application/json',
+      "Content-Type": "application/json",
     },
     body: JSON.stringify({
       to: address,
-      subject: 'Verify your FloraConnect email',
+      subject: "Verify your FloraConnect email",
       text: `Verify your email by opening this link within 24 hours: ${link.toString()}. If you did not request this, ignore this email.`,
     }),
     signal: AbortSignal.timeout(10000),
-    redirect: 'error',
+    redirect: "error",
   });
   if (!response.ok)
-    throw new HttpError(503, 'Verification email delivery is unavailable.');
+    throw new HttpError(503, "Verification email delivery is unavailable.");
   return true;
 }
