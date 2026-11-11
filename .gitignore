@@ -11,3 +11,11 @@ coverage/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Private credential material
+*.key
+*.p12
+*.pfx
+*.keystore
+secrets/
+*.pem
