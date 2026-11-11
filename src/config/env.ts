@@ -11,5 +11,5 @@ export function getMongoUri(): string {
 }
 
 export const allowedOrigins = (process.env.FRONTEND_ORIGINS ??
-  'https://flora-connect-frontend.vercel.app,http://localhost:5173,http://127.0.0.1:5173')
+  'https://flora-connect-frontend.vercel.app,http://localhost:5173,http://127.0.0.1:5173,http://localhost:5175,http://127.0.0.1:5175')
   .split(',').map(origin => origin.trim()).filter(Boolean);
