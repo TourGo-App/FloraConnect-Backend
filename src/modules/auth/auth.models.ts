@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import mongoose, { Schema } from "mongoose";
+import { permissionIds } from "./auth.permissions.js";
 
 export const roles = [
   "SUPER_ADMIN",
@@ -48,6 +49,10 @@ const userSchema = new Schema(
     },
     passwordHash: { type: String, required: true, select: false },
     role: { type: String, enum: roles, default: "USER", required: true },
+    permissions: {
+      type: [{ type: String, enum: permissionIds }],
+      default: undefined,
+    },
     status: {
       type: String,
       enum: ["PENDING_EMAIL_VERIFICATION", "ACTIVE", "SUSPENDED"],
@@ -169,6 +174,10 @@ const throttleSchema = new Schema({
   count: { type: Number, default: 0 },
   expiresAt: { type: Date, expires: 0 },
 });
+const administrationLockSchema = new Schema({
+  _id: { type: String, required: true },
+  revision: { type: Number, default: 0 },
+});
 
 // Public identifiers are separate from internal ObjectId relationships.
 for (const schema of [
@@ -190,3 +199,7 @@ export const Business = mongoose.model("BusinessProfile", businessSchema);
 export const Session = mongoose.model("Session", sessionSchema);
 export const AuditLog = mongoose.model("AuditLog", auditSchema);
 export const AuthThrottle = mongoose.model("AuthThrottle", throttleSchema);
+export const AdministrationLock = mongoose.model(
+  "AdministrationLock",
+  administrationLockSchema,
+);

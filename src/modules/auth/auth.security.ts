@@ -4,6 +4,7 @@ import type { NextFunction, Request, Response } from "express";
 import { allowedOrigins } from "../../config/env.js";
 import { connectDB } from "../../config/database.js";
 import { AuthThrottle, Session, User, type Role } from "./auth.models.js";
+import { effectivePermissions, type Permission } from "./auth.permissions.js";
 
 const derive = promisify(scrypt);
 export const digest = (value: string) =>
@@ -51,6 +52,7 @@ export function publicUser(user: {
   name: string;
   email: string;
   role: string;
+  permissions?: string[] | null;
   status?: string | null;
   emailVerified?: boolean | null;
   mustChangePassword?: boolean | null;
@@ -63,6 +65,7 @@ export function publicUser(user: {
     name: user.name,
     email: user.email,
     role: user.role,
+    permissions: effectivePermissions(user),
     status: user.status,
     emailVerified: user.emailVerified,
     mustChangePassword: user.mustChangePassword,
@@ -154,6 +157,21 @@ export function requireTrustedOrigin(
   if (!req.body || typeof req.body !== "object" || Array.isArray(req.body))
     return next(new HttpError(400, "Send a JSON object."));
   next();
+}
+export function requirePermission(permission: Permission) {
+  return (_req: Request, res: Response, next: NextFunction) => {
+    if (
+      !res.locals.user ||
+      !effectivePermissions(res.locals.user).includes(permission)
+    )
+      return next(
+        new HttpError(
+          403,
+          "Your account does not have permission for this action.",
+        ),
+      );
+    next();
+  };
 }
 export async function throttle(req: Request, scope: string, limit = 20) {
   const window = Math.floor(Date.now() / 900000);
