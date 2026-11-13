@@ -1,3 +1,4 @@
+import { userAccessRouter } from "./user-access.routes.js";
 import { Router } from "express";
 import mongoose from "mongoose";
 import {
@@ -290,3 +291,5 @@ consoleRouter.patch("/users/:id", async (req, res) => {
   });
   res.json({ message: "Personal details updated." });
 });
+
+consoleRouter.use(userAccessRouter);

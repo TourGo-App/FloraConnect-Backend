@@ -13,6 +13,7 @@ import {
   HttpError,
   publicUser,
   requireRoles,
+  requirePermission,
   requireTrustedOrigin,
   requireUser,
   text,
@@ -33,139 +34,154 @@ function createAdminRouter(platform = false) {
     requireUser,
     platform ? requireRoles("PLATFORM_ADMIN") : requireRoles("SUPER_ADMIN"),
   );
-  adminRouter.get("/overview", async (_req, res) => {
-    const [users, organizations, businesses, pending, audit] =
-      await Promise.all([
-        User.countDocuments(),
-        Organization.countDocuments({ status: "APPROVED" }),
-        Business.countDocuments({ status: "APPROVED" }),
-        Application.countDocuments({ status: "PENDING" }),
-        res.locals.user.role === "SUPER_ADMIN"
-          ? AuditLog.find()
-              .sort({ createdAt: -1 })
-              .limit(8)
-              .select("publicId action details createdAt")
-              .lean()
-          : Promise.resolve([]),
-      ]);
-    res.json({
-      counts: { users, organizations, businesses, pending },
-      audit: res.locals.user.role === "SUPER_ADMIN" ? audit.map(auditView) : [],
-    });
-  });
-  adminRouter.get("/applications", async (req, res) => {
-    const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
-    const applications = await Application.find()
-      .sort({ createdAt: -1 })
-      .skip((page - 1) * 20)
-      .limit(20)
-      .populate("userId", "publicId name email emailVerified status")
-      .lean();
-    res.json({
-      applications: applications.map(applicationView),
-      total: await Application.countDocuments(),
-      page,
-    });
-  });
-  adminRouter.post("/applications/:id/review", async (req, res) => {
-    if (
-      Object.keys(req.body).some((key) => !["decision", "reason"].includes(key))
-    )
-      throw new HttpError(400, "Unsupported review fields.");
-    if (!isPublicId(req.params.id))
-      throw new HttpError(400, "Invalid application.");
-    if (!["APPROVED", "REJECTED"].includes(req.body.decision))
-      throw new HttpError(400, "Choose approve or reject.");
-    const reason = text(req.body.reason, "review reason", 1000);
-    await mongoose.connection.transaction(async (session) => {
-      const application = await Application.findOne({
-        publicId: req.params.id,
-        status: "PENDING",
-      }).session(session);
-      if (!application)
-        throw new HttpError(
-          409,
-          "This application has already been reviewed or does not exist.",
-        );
-      const user = await User.findById(application.userId).session(session);
-      if (!user || user.role !== "USER")
-        throw new HttpError(
-          409,
-          "The applicant account is not eligible for this review.",
-        );
-      if (req.body.decision === "APPROVED") {
-        if (!user.emailVerified || user.status !== "ACTIVE")
+  adminRouter.get(
+    "/overview",
+    requirePermission("overview.read"),
+    async (_req, res) => {
+      const [users, organizations, businesses, pending, audit] =
+        await Promise.all([
+          User.countDocuments(),
+          Organization.countDocuments({ status: "APPROVED" }),
+          Business.countDocuments({ status: "APPROVED" }),
+          Application.countDocuments({ status: "PENDING" }),
+          res.locals.user.role === "SUPER_ADMIN"
+            ? AuditLog.find()
+                .sort({ createdAt: -1 })
+                .limit(8)
+                .select("publicId action details createdAt")
+                .lean()
+            : Promise.resolve([]),
+        ]);
+      res.json({
+        counts: { users, organizations, businesses, pending },
+        audit:
+          res.locals.user.role === "SUPER_ADMIN" ? audit.map(auditView) : [],
+      });
+    },
+  );
+  adminRouter.get(
+    "/applications",
+    requirePermission("applications.read"),
+    async (req, res) => {
+      const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
+      const applications = await Application.find()
+        .sort({ createdAt: -1 })
+        .skip((page - 1) * 20)
+        .limit(20)
+        .populate("userId", "publicId name email emailVerified status")
+        .lean();
+      res.json({
+        applications: applications.map(applicationView),
+        total: await Application.countDocuments(),
+        page,
+      });
+    },
+  );
+  adminRouter.post(
+    "/applications/:id/review",
+    requirePermission("applications.review"),
+    async (req, res) => {
+      if (
+        Object.keys(req.body).some(
+          (key) => !["decision", "reason"].includes(key),
+        )
+      )
+        throw new HttpError(400, "Unsupported review fields.");
+      if (!isPublicId(req.params.id))
+        throw new HttpError(400, "Invalid application.");
+      if (!["APPROVED", "REJECTED"].includes(req.body.decision))
+        throw new HttpError(400, "Choose approve or reject.");
+      const reason = text(req.body.reason, "review reason", 1000);
+      await mongoose.connection.transaction(async (session) => {
+        const application = await Application.findOne({
+          publicId: req.params.id,
+          status: "PENDING",
+        }).session(session);
+        if (!application)
           throw new HttpError(
             409,
-            "The applicant must verify their email before approval.",
+            "This application has already been reviewed or does not exist.",
           );
-        if (application.type === "ORGANIZATION_REPRESENTATIVE") {
-          if (!application.organizationType || !application.position)
+        const user = await User.findById(application.userId).session(session);
+        if (!user || user.role !== "USER")
+          throw new HttpError(
+            409,
+            "The applicant account is not eligible for this review.",
+          );
+        if (req.body.decision === "APPROVED") {
+          if (!user.emailVerified || user.status !== "ACTIVE")
             throw new HttpError(
               409,
-              "Organization category and position are required.",
+              "The applicant must verify their email before approval.",
             );
-          const [organization] = await Organization.create(
-            [
-              {
-                applicationId: application._id,
-                name: application.name,
-                type: application.organizationType,
-                contact: application.contact,
-                location: application.location,
-              },
-            ],
-            { session },
-          );
-          await Membership.create(
-            [
-              {
-                userId: user._id,
-                organizationId: organization._id,
-                role: "ORGANIZATION_ADMIN",
-                position: application.position,
-                status: "ACTIVE",
-              },
-            ],
-            { session },
-          );
-          user.role = "ORGANIZATION_ADMIN";
-        } else {
-          await Business.create(
-            [
-              {
-                ownerId: user._id,
-                type: application.type,
-                name: application.name,
-                contact: application.contact,
-                location: application.location,
-              },
-            ],
-            { session },
-          );
-          user.role = application.type === "GROWER" ? "GROWER" : "FLORIST";
+          if (application.type === "ORGANIZATION_REPRESENTATIVE") {
+            if (!application.organizationType || !application.position)
+              throw new HttpError(
+                409,
+                "Organization category and position are required.",
+              );
+            const [organization] = await Organization.create(
+              [
+                {
+                  applicationId: application._id,
+                  name: application.name,
+                  type: application.organizationType,
+                  contact: application.contact,
+                  location: application.location,
+                },
+              ],
+              { session },
+            );
+            await Membership.create(
+              [
+                {
+                  userId: user._id,
+                  organizationId: organization._id,
+                  role: "ORGANIZATION_ADMIN",
+                  position: application.position,
+                  status: "ACTIVE",
+                },
+              ],
+              { session },
+            );
+            user.role = "ORGANIZATION_ADMIN";
+          } else {
+            await Business.create(
+              [
+                {
+                  ownerId: user._id,
+                  type: application.type,
+                  name: application.name,
+                  contact: application.contact,
+                  location: application.location,
+                },
+              ],
+              { session },
+            );
+            user.role = application.type === "GROWER" ? "GROWER" : "FLORIST";
+          }
+          await user.save({ session });
         }
-        await user.save({ session });
-      }
-      application.status = req.body.decision;
-      application.decisionReason = reason;
-      application.reviewedBy = res.locals.user._id;
-      application.reviewedAt = new Date();
-      await application.save({ session });
-      await AuditLog.create(
-        [
-          {
-            actorId: res.locals.user._id,
-            action: `APPLICATION_${req.body.decision}`,
-            targetId: application._id,
-            details: reason,
-          },
-        ],
-        { session },
-      );
-    });
-    res.json({ message: "Application review saved." });
-  });
+        application.status = req.body.decision;
+        application.decisionReason = reason;
+        application.reviewedBy = res.locals.user._id;
+        application.reviewedAt = new Date();
+        await application.save({ session });
+        await AuditLog.create(
+          [
+            {
+              actorId: res.locals.user._id,
+              action: `APPLICATION_${req.body.decision}`,
+              targetId: application._id,
+              details: reason,
+            },
+          ],
+          { session },
+        );
+      });
+      res.json({ message: "Application review saved." });
+    },
+  );
   adminRouter.get("/users", requireRoles("SUPER_ADMIN"), async (req, res) => {
     const page = Math.max(1, Math.min(100000, Number(req.query.page) || 1));
     const users = await User.find()
@@ -233,6 +249,7 @@ function createAdminRouter(platform = false) {
         )
           throw new HttpError(409, "Resolve the pending application first.");
         user.role = req.body.enabled ? "PLATFORM_ADMIN" : "USER";
+        user.permissions = undefined;
         await user.save({ session });
         await SessionRevoke(user._id, session);
         await AuditLog.create(

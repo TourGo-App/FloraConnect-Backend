@@ -1,4 +1,4 @@
-﻿import { Router } from "express";
+import { Router } from "express";
 import { randomBytes } from "node:crypto";
 import mongoose from "mongoose";
 import { connectDB } from "../../config/database.js";
@@ -21,6 +21,7 @@ import {
   readSession,
   requireTrustedOrigin,
   requireUser,
+  requirePermission,
   sessionCookie,
   text,
   throttle,
@@ -240,35 +241,43 @@ authRouter.post("/password", requireUser, async (req, res) => {
   res.json({ message: "Password updated. Please sign in again." });
 });
 
-authRouter.patch("/profile", requireUser, async (req, res) => {
-  if (
-    Object.keys(req.body).some(
-      (key) => !["name", "phone", "address"].includes(key),
+authRouter.patch(
+  "/profile",
+  requireUser,
+  requirePermission("profile.update"),
+  async (req, res) => {
+    if (
+      Object.keys(req.body).some(
+        (key) => !["name", "phone", "address"].includes(key),
+      )
     )
-  )
-    throw new HttpError(
-      400,
-      "Only personal profile fields can be changed here.",
-    );
-  const name = text(req.body.name, "name", 100);
-  const updates: Record<string, string> = { name };
-  for (const [field, limit] of [
-    ["phone", 30],
-    ["address", 300],
-  ] as const) {
-    if (req.body[field] !== undefined) {
-      if (typeof req.body[field] !== "string" || req.body[field].length > limit)
-        throw new HttpError(400, `Provide a valid ${field}.`);
-      updates[field] = req.body[field].trim();
+      throw new HttpError(
+        400,
+        "Only personal profile fields can be changed here.",
+      );
+    const name = text(req.body.name, "name", 100);
+    const updates: Record<string, string> = { name };
+    for (const [field, limit] of [
+      ["phone", 30],
+      ["address", 300],
+    ] as const) {
+      if (req.body[field] !== undefined) {
+        if (
+          typeof req.body[field] !== "string" ||
+          req.body[field].length > limit
+        )
+          throw new HttpError(400, `Provide a valid ${field}.`);
+        updates[field] = req.body[field].trim();
+      }
     }
-  }
-  const user = await User.findByIdAndUpdate(res.locals.user._id, updates, {
-    returnDocument: "after",
-    runValidators: true,
-  });
-  if (!user) throw new HttpError(404, "Account not found.");
-  res.json({ user: publicUser(user) });
-});
+    const user = await User.findByIdAndUpdate(res.locals.user._id, updates, {
+      returnDocument: "after",
+      runValidators: true,
+    });
+    if (!user) throw new HttpError(404, "Account not found.");
+    res.json({ user: publicUser(user) });
+  },
+);
 
 authRouter.post("/verify-email", async (req, res) => {
   await connectDB();
