@@ -265,7 +265,7 @@ describe("Authentication and server-side role boundaries", () => {
       { accountType: "SUPER_ADMIN" },
       { accountType: "PLATFORM_ADMIN" },
       { accountType: "ORGANIZATION_MEMBER" },
-      { password: "short" },
+      { password: "seven77" },
     ]) {
       expect(
         (
@@ -433,7 +433,7 @@ describe("Public registration intent and privilege injection", () => {
   const input = {
     name: "Applicant",
     email: "applicant@example.test",
-    password: "test-only-password-12",
+    password: "eight888",
     registrationKind: "personal",
   };
   const register = (body: object) =>
@@ -742,7 +742,7 @@ describe("Credential rotation and email verification", () => {
       .set("X-CSRF-Token", "csrf-test")
       .send({
         currentPassword: "test-only-password-12",
-        newPassword: "replacement-password-12",
+        newPassword: "eight888",
       });
     expect(response.status).toBe(200);
     expect(update).toHaveBeenCalledWith(
@@ -775,7 +775,7 @@ describe("Credential rotation and email verification", () => {
           .set("X-CSRF-Token", "csrf-test")
           .send({
             currentPassword: "wrong-password",
-            newPassword: "replacement-password-12",
+            newPassword: "eight888",
           })
       ).status,
     ).toBe(401);

@@ -40,8 +40,8 @@ export function email(value: unknown) {
   return result;
 }
 export function password(value: unknown) {
-  if (typeof value !== "string" || value.length < 12 || value.length > 128)
-    throw new HttpError(400, "Use a password between 12 and 128 characters.");
+  if (typeof value !== "string" || value.length < 8 || value.length > 128)
+    throw new HttpError(400, "Use a password between 8 and 128 characters.");
   return value;
 }
 export function publicUser(user: {
