@@ -3,6 +3,7 @@ import {
   DatabaseUnavailableError,
 } from "./config/database.errors.js";
 import express, { type ErrorRequestHandler } from "express";
+import { OriginConfigurationError } from "./config/env.js";
 import { HttpError } from "./modules/auth/auth.security.js";
 import { frontendCors } from "./middleware/cors.js";
 import { notFound } from "./middleware/not-found.js";
@@ -31,6 +32,18 @@ app.use("/api", apiRouter);
 app.use(notFound);
 
 const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
+  if (error instanceof OriginConfigurationError) {
+    console.error(
+      "Frontend origin configuration is invalid. Check FRONTEND_ORIGINS in the backend deployment environment.",
+    );
+    res.set("Cache-Control", "no-store");
+    res.status(503).json({
+      code: error.code,
+      message:
+        "Sign-in is temporarily unavailable because allowed frontend origins are not configured correctly.",
+    });
+    return;
+  }
   if (
     error instanceof DatabaseConfigurationError ||
     error instanceof DatabaseUnavailableError
