@@ -41,5 +41,8 @@ session authentication, CSRF validation or role authorization.
 Observed on 2026-11-14: the development backend's database-independent health URL
 returned HTTP 500 with `FUNCTION_INVOCATION_FAILED`. The first exception in Vercel
 function logs is needed to identify the hosted startup failure. Validate the exact
-allowlist first: malformed values can fail module initialization. A MongoDB change
-alone does not establish the cause of a failed liveness function.
+allowlist first: malformed values previously failed module initialization. Origin
+validation now runs during requests: liveness remains available, while application
+requests fail closed with HTTP 503 and `ORIGIN_NOT_CONFIGURED`. Logs and responses
+omit the configured value. Correct the environment and redeploy to enable login.
+A MongoDB change alone does not establish the cause of a failed liveness function.

@@ -36,6 +36,15 @@ export function getMongoUri(): string {
   return "mongodb://localhost:27017/floraconnect";
 }
 
+export class OriginConfigurationError extends Error {
+  readonly code = "ORIGIN_NOT_CONFIGURED";
+  constructor() {
+    super(
+      "FRONTEND_ORIGINS must contain exact allowed origins; production requires HTTPS.",
+    );
+  }
+}
+
 export function getAllowedOrigins(): string[] {
   const configured = process.env.FRONTEND_ORIGINS?.trim();
   const production =
@@ -47,7 +56,12 @@ export function getAllowedOrigins(): string[] {
       : ["http://localhost:5173", "http://127.0.0.1:5173"];
   return values.map((entry) => {
     const value = entry.trim();
-    const url = new URL(value);
+    let url: URL;
+    try {
+      url = new URL(value);
+    } catch {
+      throw new OriginConfigurationError();
+    }
     if (
       url.origin !== value ||
       url.username ||
@@ -56,10 +70,7 @@ export function getAllowedOrigins(): string[] {
         ? url.protocol !== "https:"
         : !["http:", "https:"].includes(url.protocol))
     )
-      throw new Error(
-        "FRONTEND_ORIGINS must contain exact allowed origins; production requires HTTPS.",
-      );
+      throw new OriginConfigurationError();
     return value;
   });
 }
-export const allowedOrigins = getAllowedOrigins();
