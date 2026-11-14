@@ -1,7 +1,7 @@
 import { createHash, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import type { NextFunction, Request, Response } from "express";
-import { allowedOrigins } from "../../config/env.js";
+import { getAllowedOrigins } from "../../config/env.js";
 import { connectDB } from "../../config/database.js";
 import { AuthThrottle, Session, User, type Role } from "./auth.models.js";
 import { effectivePermissions, type Permission } from "./auth.permissions.js";
@@ -150,7 +150,7 @@ export function requireTrustedOrigin(
 ) {
   if (["GET", "HEAD", "OPTIONS"].includes(req.method)) return next();
   const origin = req.get("Origin");
-  if (!origin || !allowedOrigins.includes(origin))
+  if (!origin || !getAllowedOrigins().includes(origin))
     return next(new HttpError(403, "This request origin is not allowed."));
   if (!req.is("application/json"))
     return next(new HttpError(415, "Send application/json."));
