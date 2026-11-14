@@ -1,5 +1,9 @@
 import mongoose from 'mongoose';
 import { getMongoUri } from './env.js';
+import {
+  DatabaseUnavailableError,
+  databaseFailureReason,
+} from './database.errors.js';
 
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -30,24 +34,26 @@ export async function connectDB(): Promise<typeof mongoose> {
 
   if (!cache.promise) {
     const uri = getMongoUri();
-    const opts: mongoose.ConnectOptions = {
-      serverSelectionTimeoutMS: 5000,
-    };
-
-    cache.promise = mongoose.connect(uri, opts).then((m) => {
-      console.log('MongoDB connected successfully');
-      return m;
-    });
+    cache.conn = null;
+    const pending = mongoose
+      .connect(uri, { serverSelectionTimeoutMS: 5000 })
+      .then((connection) => {
+        cache.conn = connection;
+        return connection;
+      })
+      .catch((error: unknown) => {
+        cache.conn = null;
+        console.error('MongoDB connection failed', {
+          reason: databaseFailureReason(error),
+        });
+        throw new DatabaseUnavailableError();
+      })
+      .finally(() => {
+        if (cache.promise === pending) cache.promise = null;
+      });
+    cache.promise = pending;
   }
-
-  try {
-    cache.conn = await cache.promise;
-  } catch (error) {
-    cache.promise = null;
-    throw error;
-  }
-
-  return cache.conn;
+  return cache.promise;
 }
 
 /**
@@ -64,8 +70,7 @@ export function isDbConnected(): boolean {
 export async function disconnectDB(): Promise<void> {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
-    cache.conn = null;
-    cache.promise = null;
   }
+  cache.conn = null;
+  cache.promise = null;
 }
-
